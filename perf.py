@@ -79,3 +79,4 @@ def process(filename):
 import os
 for file in os.listdir("/Users/sid/lab/pylab"):
     if (file.endswith(".log")):
+        process(file)
