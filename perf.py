@@ -17,66 +17,78 @@ TX_ID_INDEX = 4
 METRICS_CONTENT_SEPARATOR = "---"
 METRICS_SECTION_SEPARATOR = "|"
 
+
+# Turn the raw file in to a DataFrame as per below that we can use to analyze the data.
+# The rows are transaction ids and each column represents the timestamp when the method was enttered / existed
+#
+#     Method A  Method B  Method C  Method D  Method E
+# 44        107       201       223       341       NaN
+# 223       103       143       203       219       NaN
+# 33        106       149       199       207       NaN
+# 19        101       104       176       211     351.0
+# 51        111       154       204       206       NaN
+#
 def process(filename):
 
     infile = open(filename, "r", encoding="utf-8")
-    #
 
-    timingsByTx = {}
+    # This dict of dicts ... method times keyed by the transaction id ... is the basis of the DataFrame
+    methodTimesByTx = {}
 
     # read the file and extract the metrics details
     for line in infile:
-        metricsInfo = line.split(METRICS_CONTENT_SEPARATOR)[1]
+        metricsInfo = line.split(METRICS_CONTENT_SEPARATOR)[1]  # the half of the string with the metrics info
         metrics = metricsInfo.split(METRICS_SECTION_SEPARATOR)
 
-        tx = metrics[TX_ID_INDEX].strip().strip("\n")
+        tx = metrics[TX_ID_INDEX].strip().strip("\n")           # the transaction id
         methodName = metrics[METHOD_NAME_INDEX].strip()
         time = metrics[TIMINGS_INDEX].strip()
 
-        timingsByTx.setdefault(tx, []).append((methodName, int(time)))
+        # not all the methods for each transaction will appear together so collect in a map
+        methodTimesByTx.setdefault(tx, {})[methodName] = int(time)
 
-    df = pd.DataFrame.from_dict(timingsByTx, orient='index')
+    # This outputs a base table like below
+    df = pd.DataFrame(list(methodTimesByTx.values()), index=methodTimesByTx.keys())
 
-    print(df)
-    print("\n")
-    print("********************************")
-    print("Grab the numeric part of the tuple. These are the method times")
+    return df
 
-    # get the numeric times part from the dataframe and then apply the difference
-    diffs = np.diff(df.applymap(lambda x: x[1]))
-    print(diffs)
+#
+# Perform some analysis on the resulting dataframe
+# For each transaction add:
+#   - Elapsed time;
+#   - Max method;
+#
+def analyze(df):
 
-    print("\n")
-    print("********************************")
-    print("Calculate the difference between each timing")
+    diffs = list(np.diff(df, axis=1))
 
-    realDiffs = [np.insert(x,0,0) for x in diffs]
-    print(realDiffs)
+    df['Diffs'] = diffs
+    df['Max Method'] = ([df.columns[np.nanargmax(x)] for x in diffs])
+    df['Max Method Time'] = [np.nanmax(x) for x in diffs]
+    df['Elapsed'] = [np.nansum(x) for x in diffs]
 
-    print("\n")
-    print("********************************")
-    print("Snip out the method names")
-    methodNames = [x for x in df.applymap(lambda x: (x[0])).values]
-    print(methodNames)
+    return df
 
-
-    print("\n")
-    print("********************************")
-    print("And append both diffs and method names to the data frame")
-
-    # df['Timings'] = realDiffs
-    # df['Methods'] = methodNames
-
-    mts = [dict(zip(x, y)) for x,y in zip(methodNames, realDiffs)]
-    df['Method Times'] = mts
-
-    # get the method that took the longest time
-    df['Max Method'] = df['Method Times'].apply(lambda x: {max(x, key=x.get): x[max(x, key=x.get)]})
+def summarize(df):
+    summaries = {}
+    summaries['Average'] = np.mean(df['Elapsed'])
+    summaries['Median'] = np.median(df['Elapsed'])
+    summaries['Min'] = np.min(df['Elapsed'])
+    summaries['Max'] = np.max(df['Elapsed'])
+    summaries['SDev'] = np.std(df['Elapsed'])
 
 
-    print(df)
+    return summaries
+
+
 
 import os
 for file in os.listdir("/Users/sid/lab/pylab"):
     if (file.endswith(".log")):
-        process(file)
+        df = process(file)
+
+        df = analyze(df)
+
+        summaries = summarize(df)
+
+        print(summaries)
