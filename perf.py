@@ -50,6 +50,10 @@ def process(filename):
     # This outputs a base table like below
     df = pd.DataFrame(list(methodTimesByTx.values()), index=methodTimesByTx.keys())
 
+    df.fillna(value=0, axis=1, inplace=True)
+
+    print(df)
+
     return df
 
 #
@@ -60,12 +64,14 @@ def process(filename):
 #
 def analyze(df):
 
-    diffs = list(np.diff(df, axis=1))
+    diffs = list(np.absolute(np.diff(df, axis=1)))
 
     df['Diffs'] = diffs
     df['Max Method'] = ([df.columns[np.nanargmax(x)] for x in diffs])
     df['Max Method Time'] = [np.nanmax(x) for x in diffs]
     df['Elapsed'] = [np.nansum(x) for x in diffs]
+
+    print(df)
 
     return df
 
@@ -83,12 +89,10 @@ def summarize(df):
 
 
 import os
-for file in os.listdir("/Users/sid/lab/pylab"):
-    if (file.endswith(".log")):
-        df = process(file)
+# for file in os.listdir("/Users/sid/lab/pylab"):
+#    if (file.endswith(".log")):
+df = process("/Users/sid/lab/pylab/sample-sparse.log")
 
-        df = analyze(df)
+df = analyze(df)
 
-        summaries = summarize(df)
-
-        print(summaries)
+summaries = summarize(df)
