@@ -50,9 +50,7 @@ def process(filename):
     # This outputs a base table like below
     df = pd.DataFrame(list(methodTimesByTx.values()), index=methodTimesByTx.keys())
 
-    df.fillna(value=0, axis=1, inplace=True)
-
-    print(df)
+    # print(df)
 
     return df
 
@@ -64,7 +62,11 @@ def process(filename):
 #
 def analyze(df):
 
-    diffs = list(np.absolute(np.diff(df, axis=1)))
+    prediffs = [[x for x in row if ~np.isnan(x)] for row in df.values]
+    # print(prediffs)
+
+    diffs = [[y - x for x,y in zip(row, row[1:])] for row in prediffs]
+    # print(diffs)
 
     df['Diffs'] = diffs
     df['Max Method'] = ([df.columns[np.nanargmax(x)] for x in diffs])
