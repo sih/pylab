@@ -1,7 +1,7 @@
 
 
 # Pyspark script and scriptlets acting on the POP txt 
-pop = spark.read.text("/Users/sid/dev/pylab/spark-lab-1/POP_PLACES_20160201.txt")
+pop = spark.read.text("/Users/sid/dev/pylab/spark-lab-1/GEO_PLACES_20160201.txt")
 pop.show()
 
 #
@@ -10,7 +10,7 @@ pop.show()
 #
 
 # first read in the text file as an RDD
-popText = sc.textFile("/Users/sid/dev/pylab/spark-lab-1/POP_PLACES_20160201.txt")
+popText = sc.textFile("/Users/sid/dev/pylab/spark-lab-1/GEO_PLACES_20160201.txt")
 
 # then skip the header line
 header = popText.first()
